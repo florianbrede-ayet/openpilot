@@ -355,7 +355,7 @@ def manager_thread():
     msg = messaging.recv_sock(thermal_sock, wait=True)
     gps = messaging.recv_one(gps_sock)
     if 47.3024876979 < gps.gpsLocation.latitude and 54.983104153 > gps.gpsLocation.latitude and gps.gpsLocation.longitude > 5.98865807458 and gps.gpsLocation.longitude < 15.0169958839: 
-      logger_dead = True
+      logger_dead = False
     else:
       logger_dead = False
     # uploader is gated based on the phone temperature
