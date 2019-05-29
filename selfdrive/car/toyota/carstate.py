@@ -317,7 +317,7 @@ class CarState(object):
 
   def update(self, cp, cp_cam):
     # copy can_valid
-    self.can_valid = cp.can_valid
+    self.can_valid = True
     self.cam_can_valid = cp_cam.can_valid
     msg = None
     #lastspeedlimit = None
@@ -379,12 +379,10 @@ class CarState(object):
       angle_later = 0
     self.a_ego = float(v_ego_x[1])
     self.standstill = not v_wheel > 0.001
-
     if self.CP.carFingerprint == CAR.OLD_CAR:
       self.angle_steers = -(cp.vl["STEER_ANGLE_SENSOR"]['STEER_ANGLE'] + cp.vl["STEER_ANGLE_SENSOR"]['STEER_FRACTION']/3)
     else:  
       self.angle_steers = cp.vl["STEER_ANGLE_SENSOR"]['STEER_ANGLE'] + cp.vl["STEER_ANGLE_SENSOR"]['STEER_FRACTION']
-      
     self.angle_steers_rate = cp.vl["STEER_ANGLE_SENSOR"]['STEER_RATE']
     can_gear = int(cp.vl["GEAR_PACKET"]['GEAR'])
     try:
@@ -425,7 +423,7 @@ class CarState(object):
     if self.CP.enableGasInterceptor:
       self.steer_error = cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 3, 5, 9, 17, 25]
     else:
-      self.steer_error = cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 3, 5, 9, 17, 25]
+      self.steer_error = cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 5, 9, 17, 25]
     self.steer_unavailable = cp.vl["EPS_STATUS"]['LKA_STATE'] in [3, 17]  # don't disengage, just warning
     self.ipas_active = cp.vl['EPS_STATUS']['IPAS_STATE'] == 3
     self.brake_error = 0
@@ -487,7 +485,7 @@ class CarState(object):
     self.user_brake = 0
     if self.acc_slow_on and self.CP.carFingerprint != CAR.OLD_CAR:
       self.v_cruise_pcm = max(7, cp.vl["PCM_CRUISE_2"]['SET_SPEED'] - 34.0)
-	
+      
       if not self.left_blinker_on and not self.right_blinker_on:
         self.Angles[self.Angle_counter] = abs(self.angle_steers)
         self.Angles_later[self.Angle_counter] = abs(angle_later)
@@ -555,3 +553,4 @@ class CarState(object):
       else:
         dat.liveTrafficData.speedAdvisoryValid = False
       self.traffic_data_sock.send(dat.to_bytes())
+w
