@@ -483,7 +483,7 @@ class CarState(object):
     self.steer_override = abs(self.steer_torque_driver) > STEER_THRESHOLD
 
     self.user_brake = 0
-    if self.acc_slow_on and self.CP.carFingerprint != CAR.OLD_CAR:
+    if self.acc_slow_on:
       self.v_cruise_pcm = max(7, cp.vl["PCM_CRUISE_2"]['SET_SPEED'] - 34.0)
       
       if not self.left_blinker_on and not self.right_blinker_on:
@@ -553,4 +553,3 @@ class CarState(object):
       else:
         dat.liveTrafficData.speedAdvisoryValid = False
       self.traffic_data_sock.send(dat.to_bytes())
-w
