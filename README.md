@@ -233,11 +233,14 @@ If you want to know more about that. Feel free to contact us on Github.
 
 Community is the most important thing on this project.
 
+The [legendary Arne Fork] does support old_cars now.
+Big thanks to Arne182 for his awesome work. 
 
 
 Comma [Twitter you should follow](https://twitter.com/comma_ai).
 
 Also, we have a several thousand people community on [Discord](https://discord.comma.ai).
+
 
 
 Licensing
