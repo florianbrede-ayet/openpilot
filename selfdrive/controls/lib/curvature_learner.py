@@ -10,7 +10,7 @@ import os
 # The learned curvature offsets will save and load automatically
 # If you still need help, check out how I have it implemented in the devel_curvaturefactorlearner branch
 # by Zorrobyte
-# version 2
+# version 4
 
 class CurvatureLearner:
     def __init__(self, debug=False):
@@ -19,17 +19,15 @@ class CurvatureLearner:
         self.frame = 0
         self.debug = debug
         try:
-            self.learned_offsets = pickle.load(open("/data/curvaturev2.p", "rb"))
+            self.learned_offsets = pickle.load(open("/data/curvaturev4.p", "rb"))
         except (OSError, IOError):
             self.learned_offsets = {
                 "center": 0.,
-                "leftinner": 0.,
-                "rightinner": 0.,
-                "leftouter": 0.,
-                "rightouter": 0.
+                "inner": 0.,
+                "outer": 0.
             }
-            pickle.dump(self.learned_offsets, open("/data/curvaturev2.p", "wb"))
-            os.chmod("/data/curvaturev2.p", 0o777)
+            pickle.dump(self.learned_offsets, open("/data/curvaturev4.p", "wb"))
+            os.chmod("/data/curvaturev4.p", 0o777)
 
     def update(self, angle_steers=0., d_poly=None, v_ego=0.):
         if angle_steers > 0.1:
@@ -37,27 +35,27 @@ class CurvatureLearner:
                 self.learned_offsets["center"] -= d_poly[3] / self.learning_rate
                 self.offset = self.learned_offsets["center"]
             elif 2. < abs(angle_steers) < 5.:
-                self.learned_offsets["leftinner"] -= d_poly[3] / self.learning_rate
-                self.offset = self.learned_offsets["leftinner"]
+                self.learned_offsets["inner"] -= d_poly[3] / self.learning_rate
+                self.offset = self.learned_offsets["inner"]
             elif abs(angle_steers) > 5.:
-                self.learned_offsets["leftouter"] -= d_poly[3] / self.learning_rate
-                self.offset = self.learned_offsets["leftouter"]
+                self.learned_offsets["outer"] -= d_poly[3] / self.learning_rate
+                self.offset = self.learned_offsets["outer"]
         elif angle_steers < -0.1:
             if abs(angle_steers) < 2.:
                 self.learned_offsets["center"] += d_poly[3] / self.learning_rate
                 self.offset = self.learned_offsets["center"]
             elif 2. < abs(angle_steers) < 5.:
-                self.learned_offsets["rightinner"] += d_poly[3] / self.learning_rate
-                self.offset = self.learned_offsets["rightinner"]
+                self.learned_offsets["inner"] += d_poly[3] / self.learning_rate
+                self.offset = self.learned_offsets["inner"]
             elif abs(angle_steers) > 5.:
-                self.learned_offsets["rightouter"] += d_poly[3] / self.learning_rate
-                self.offset = self.learned_offsets["rightouter"]
+                self.learned_offsets["outer"] += d_poly[3] / self.learning_rate
+                self.offset = self.learned_offsets["outer"]
 
         self.offset = clip(self.offset, -0.3, 0.3)
         self.frame += 1
 
         if self.frame == 12000:  # every 2 mins
-            pickle.dump(self.learned_offsets, open("/data/curvaturev2.p", "wb"))
+            pickle.dump(self.learned_offsets, open("/data/curvaturev4.p", "wb"))
             self.frame = 0
         if self.debug:
             with open('/data/curvdebug.csv', 'a') as csv_file:
