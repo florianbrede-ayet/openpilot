@@ -112,8 +112,8 @@ int main( )
   ocp.subjectTo( deg2rad(-90) <= psi <= deg2rad(90));
   // more than absolute max steer angle
   ocp.subjectTo( deg2rad(-50) <= delta <= deg2rad(50));
-  // 100 degrees/sec steerrate constraint
-  ocp.subjectTo( deg2rad(-100) <= t <= deg2rad(100));
+  // 5 degrees/sec steerrate constraint
+  ocp.subjectTo( deg2rad(-5) <= t <= deg2rad(5));
   ocp.setNOD(17);
 
   OCPexport mpc(ocp);
