@@ -1,5 +1,10 @@
 import numpy as np
+from selfdrive.services import service_list
 from cereal import car
+from cereal import arne182
+from common.basedir import BASEDIR
+import selfdrive.messaging as messaging
+from common.numpy_fast import interp
 from common.kalman.simple_kalman import KF1D
 from selfdrive.can.can_define import CANDefine
 from selfdrive.can.parser import CANParser
@@ -86,7 +91,18 @@ def get_can_parser(CP):
 
 def get_cam_can_parser(CP):
 
-  signals = []
+  signals = [
+    ("TSGN1", "RSA1", 0),
+    ("SPDVAL1", "RSA1", 0),
+    ("SPLSGN1", "RSA1", 0),
+    ("TSGN2", "RSA1", 0),
+    ("SPDVAL2", "RSA1", 0),
+    ("SPLSGN2", "RSA1", 0),
+    ("TSGN3", "RSA2", 0),
+    ("SPLSGN3", "RSA2", 0),
+    ("TSGN4", "RSA2", 0),
+    ("SPLSGN4", "RSA2", 0),
+  ]
 
   # use steering message to check if panda is connected to frc
   checks = [("STEERING_LKA", 42)]
@@ -104,7 +120,17 @@ class CarState(object):
     self.right_blinker_on = 0
     self.angle_offset = 0.
     self.init_angle_offset = False
-
+    
+    self.acc_slow_on = False
+    self.pcm_acc_status = False
+    self.setspeedoffset = 34.0
+    self.Angles = np.zeros(250)
+    self.Angles_later = np.zeros(250)
+    self.Angle_counter = 0
+    self.Angle = [0, 5, 10, 15,20,25,30,35,60,100,180,270,500]
+    self.Angle_Speed = [255,160,100,80,70,60,55,50,40,33,27,17,12]
+    if BASEDIR == "/data/openpilot" or BASEDIR == "/data/openpilot.arne182":
+      self.traffic_data_sock = messaging.pub_sock(service_list['liveTrafficData'].port)
     # initialize can parser
     self.car_fingerprint = CP.carFingerprint
 
@@ -118,7 +144,7 @@ class CarState(object):
                          K=[[0.12287673], [0.29666309]])
     self.v_ego = 0.0
 
-  def update(self, cp):
+  def update(self, cp, cp_cam):
     # update prevs, update must run once per loop
     self.prev_left_blinker_on = self.left_blinker_on
     self.prev_right_blinker_on = self.right_blinker_on
@@ -151,8 +177,9 @@ class CarState(object):
     self.v_ego = float(v_ego_x[0])
     self.a_ego = float(v_ego_x[1])
     self.standstill = not v_wheel > 0.001
-
-    if self.CP.carFingerprint in TSS2_CAR:
+    if self.CP.carFingerprint == CAR.OLD_CAR:
+      self.angle_steers = -(cp.vl["STEER_ANGLE_SENSOR"]['STEER_ANGLE'] + cp.vl["STEER_ANGLE_SENSOR"]['STEER_FRACTION']/3)
+    elif self.CP.carFingerprint in TSS2_CAR:
       self.angle_steers = cp.vl["STEER_TORQUE_SENSOR"]['STEER_ANGLE']
     elif self.CP.carFingerprint in NO_DSU_CAR:
       # cp.vl["STEER_TORQUE_SENSOR"]['STEER_ANGLE'] is zeroed to where the steering angle is at start.
@@ -191,6 +218,21 @@ class CarState(object):
     else:
       self.v_cruise_pcm = cp.vl["PCM_CRUISE_2"]['SET_SPEED']
       self.low_speed_lockout = cp.vl["PCM_CRUISE_2"]['LOW_SPEED_LOCKOUT'] == 2
+    if cp.vl["PCM_CRUISE"]['CRUISE_STATE'] and not self.pcm_acc_status:
+      if self.v_ego < 11.38:
+        self.acc_slow_on = True
+        self.setspeedoffset = max(min(int(41.0-self.v_ego*3.6),34.0),0.0)
+      else:
+        self.acc_slow_on = False
+    if self.acc_slow_on and self.CP.carFingerprint != CAR.OLD_CAR:
+      self.v_cruise_pcm = max(7, int(self.v_cruise_pcm) - self.setspeedoffset)
+    if not self.left_blinker_on and not self.right_blinker_on:
+      self.Angles[self.Angle_counter] = abs(self.angle_steers)
+      self.v_cruise_pcm = int(min(self.v_cruise_pcm, interp(np.max(self.Angles), self.Angle, self.Angle_Speed)))
+    else:
+      self.Angles[self.Angle_counter] = 0
+      self.Angles_later[self.Angle_counter] = 0
+    self.Angle_counter = (self.Angle_counter + 1 ) % 250
     self.pcm_acc_status = cp.vl["PCM_CRUISE"]['CRUISE_STATE']
     self.pcm_acc_active = bool(cp.vl["PCM_CRUISE"]['CRUISE_ACTIVE'])
     self.brake_lights = bool(cp.vl["ESP_CONTROL"]['BRAKE_LIGHTS_ACC'] or self.brake_pressed)
@@ -198,3 +240,35 @@ class CarState(object):
       self.generic_toggle = cp.vl["AUTOPARK_STATUS"]['STATE'] != 0
     else:
       self.generic_toggle = bool(cp.vl["LIGHT_STALK"]['AUTO_HIGH_BEAM'])
+    self.tsgn1 = cp_cam.vl["RSA1"]['TSGN1']
+    self.spdval1 = cp_cam.vl["RSA1"]['SPDVAL1']
+    
+    self.splsgn1 = cp_cam.vl["RSA1"]['SPLSGN1']
+    self.tsgn2 = cp_cam.vl["RSA1"]['TSGN2']
+    self.spdval2 = cp_cam.vl["RSA1"]['SPDVAL2']
+    
+    self.splsgn2 = cp_cam.vl["RSA1"]['SPLSGN2']
+    self.tsgn3 = cp_cam.vl["RSA2"]['TSGN3']
+    self.splsgn3 = cp_cam.vl["RSA2"]['SPLSGN3']
+    self.tsgn4 = cp_cam.vl["RSA2"]['TSGN4']
+    self.splsgn4 = cp_cam.vl["RSA2"]['SPLSGN4']
+    self.noovertake = self.tsgn1 == 65 or self.tsgn2 == 65 or self.tsgn3 == 65 or self.tsgn4 == 65 or self.tsgn1 == 66 or self.tsgn2 == 66 or self.tsgn3 == 66 or self.tsgn4 == 66
+    if self.spdval1 > 0 or self.spdval2 > 0:
+      dat = arne182.LiveTrafficData.new_message()
+      if self.spdval1 > 0:
+        dat.speedLimitValid = True
+        if self.tsgn1 == 36:
+          dat.speedLimit = self.spdval1 * 1.60934
+        elif self.tsgn1 == 1:
+          dat.speedLimit = self.spdval1
+        else:
+          dat.speedLimit = 0
+      else:
+        dat.speedLimitValid = False
+      if self.spdval2 > 0:
+        dat.speedAdvisoryValid = True
+        dat.speedAdvisory = self.spdval2
+      else:
+        dat.speedAdvisoryValid = False
+      if BASEDIR == "/data/openpilot" or BASEDIR == "/data/openpilot.arne182":
+        self.traffic_data_sock.send(dat.to_bytes())
