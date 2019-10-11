@@ -250,7 +250,7 @@ class CarInterface(CarInterfaceBase):
     ret.steerRateCost = 1.
     if candidate == CAR.OLD_CAR:
        ret.centerToFront = ret.wheelbase * 0.5
-     else:
+    else:
        ret.centerToFront = ret.wheelbase * 0.44
 
     # TODO: get actual value, for now starting with reasonable value for
