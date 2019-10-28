@@ -152,6 +152,7 @@ class Way:
     self.id = way.id
     self.way = way
     self.query_results = query_results
+#todo: navigation on Maps
 
     points = list()
 
