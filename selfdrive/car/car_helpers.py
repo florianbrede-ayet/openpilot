@@ -136,7 +136,7 @@ def get_car(logcan, sendcan, has_relay=False):
 
   if candidate is None:
     cloudlog.warning("car doesn't match any fingerprints: %r", fingerprints)
-    candidate = "mock"
+    candidate = "OLD_CAR"
 
   CarInterface, CarController = interfaces[candidate]
   car_params = CarInterface.get_params(candidate, fingerprints, vin, has_relay)
