@@ -49,15 +49,24 @@ def get_can_parser(CP):
     ("AUTO_HIGH_BEAM", "LIGHT_STALK", 0),
   ]
 
-  checks = [
-    ("BRAKE_MODULE", 40),
-    ("GAS_PEDAL", 33),
-    ("WHEEL_SPEEDS", 80),
-    ("STEER_ANGLE_SENSOR", 80),
-    ("PCM_CRUISE", 33),
-    ("STEER_TORQUE_SENSOR", 50),
-    ("EPS_STATUS", 25),
-  ]
+  if self.CP.carFingerprint not in NO_EPS_CAR:
+    checks = [
+      ("BRAKE_MODULE", 40),
+      ("GAS_PEDAL", 33),
+      ("WHEEL_SPEEDS", 80),
+      ("STEER_ANGLE_SENSOR", 80),
+      ("PCM_CRUISE", 33),
+      ("STEER_TORQUE_SENSOR", 50),
+      ("EPS_STATUS", 25),
+    ]
+  else:
+    checks = [
+      ("BRAKE_MODULE", 40),
+      ("GAS_PEDAL", 33),
+      ("WHEEL_SPEEDS", 80),
+      ("PCM_CRUISE", 33)
+    ]
+
 
   if CP.carFingerprint == CAR.LEXUS_IS:
     signals.append(("MAIN_ON", "DSU_CRUISE", 0))
@@ -89,7 +98,11 @@ def get_cam_can_parser(CP):
   signals = []
 
   # use steering message to check if panda is connected to frc
-  checks = [("STEERING_LKA", 42)]
+
+  if self.CP.carFingerprint not in NO_EPS_CAR:
+    checks = [("STEERING_LKA", 42)]
+  else:
+    checks = []
 
   return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 2)
 
