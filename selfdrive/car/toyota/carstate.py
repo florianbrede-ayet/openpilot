@@ -4,7 +4,7 @@ from common.kalman.simple_kalman import KF1D
 from selfdrive.can.can_define import CANDefine
 from selfdrive.can.parser import CANParser
 from selfdrive.config import Conversions as CV
-from selfdrive.car.toyota.values import CAR, DBC, STEER_THRESHOLD, TSS2_CAR, NO_DSU_CAR
+from selfdrive.car.toyota.values import CAR, DBC, STEER_THRESHOLD, TSS2_CAR, NO_DSU_CAR, NO_EPS_CAR
 
 GearShifter = car.CarState.GearShifter
 
@@ -178,7 +178,7 @@ class CarState():
 
     # 2 is standby, 10 is active. TODO: check that everything else is really a faulty state
     self.steer_state = cp.vl["EPS_STATUS"]['LKA_STATE']
-    self.steer_error = cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 5]
+    self.steer_error = self.CP.carFingerprint not in NO_EPS_CAR and cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 5]
     self.ipas_active = cp.vl['EPS_STATUS']['IPAS_STATE'] == 3
     self.brake_error = 0
     self.steer_torque_driver = cp.vl["STEER_TORQUE_SENSOR"]['STEER_TORQUE_DRIVER']

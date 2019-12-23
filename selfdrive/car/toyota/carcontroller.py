@@ -6,7 +6,7 @@ from selfdrive.car.toyota.toyotacan import make_can_msg, create_video_target,\
                                            create_steer_command, create_ui_command, \
                                            create_ipas_steer_command, create_accel_command, \
                                            create_acc_cancel_command, create_fcw_command
-from selfdrive.car.toyota.values import CAR, ECU, STATIC_MSGS, TSS2_CAR
+from selfdrive.car.toyota.values import CAR, ECU, STATIC_MSGS, TSS2_CAR, NO_DSU_CAR, NO_EPS_CAR
 from selfdrive.can.packer import CANPacker
 
 VisualAlert = car.CarControl.HUDControl.VisualAlert
@@ -144,11 +144,12 @@ class CarController():
       self.last_fault_frame = frame
 
     # Cut steering for 2s after fault
-    if not enabled or (frame - self.last_fault_frame < 200):
+    if not enabled or self.CS.carFingerprint in NO_EPS_CAR or (frame - self.last_fault_frame < 200):
       apply_steer = 0
       apply_steer_req = 0
     else:
       apply_steer_req = 1
+
 
     self.steer_angle_enabled, self.ipas_reset_counter = \
       ipas_state_transition(self.steer_angle_enabled, enabled, CS.ipas_active, self.ipas_reset_counter)
