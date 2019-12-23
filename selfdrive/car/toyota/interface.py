@@ -412,8 +412,8 @@ class CarInterface(CarInterfaceBase):
     if ret.gearShifter == GearShifter.reverse and self.CP.enableDsu:
       events.append(create_event('reverseGear', [ET.NO_ENTRY, ET.IMMEDIATE_DISABLE]))
 
-    if self.CP.carFingerprint in NO_EPS_CAR:
-      events.append(create_event('manualSteeringRequired', [ET.WARNING]))
+    # if self.CP.carFingerprint in NO_EPS_CAR:
+    #   events.append(create_event('manualSteeringRequired', [ET.WARNING]))
 
     if self.CS.steer_error:
       events.append(create_event('steerTempUnavailable', [ET.NO_ENTRY, ET.WARNING]))
