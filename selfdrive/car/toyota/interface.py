@@ -22,9 +22,12 @@ class CarInterface(CarInterfaceBase):
     if self.CP.carFingerprint in NO_EPS_CAR:
       self.sensor = messaging.sub_sock(service_list['sensorEvents'].port)
       self.yaw_rate_meas = 0.
+      self.yaw_rate = 0.
 
     if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
       self.gps = messaging.sub_sock(service_list['gpsLocation'].port)
+      self.speed = 0.
+      self.prev_speed = 0.
 
 
     self.frame = 0
