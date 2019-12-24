@@ -4,9 +4,11 @@ from selfdrive.config import Conversions as CV
 from selfdrive.controls.lib.drive_helpers import EventTypes as ET, create_event
 from selfdrive.controls.lib.vehicle_model import VehicleModel
 from selfdrive.car.toyota.carstate import CarState, get_can_parser, get_cam_can_parser
-from selfdrive.car.toyota.values import ECU, ECU_FINGERPRINT, CAR, NO_STOP_TIMER_CAR, TSS2_CAR, FINGERPRINTS, NO_EPS_CAR
+from selfdrive.car.toyota.values import ECU, ECU_FINGERPRINT, CAR, NO_STOP_TIMER_CAR, TSS2_CAR, FINGERPRINTS, NO_EPS_CAR, NO_SPEEDOMETER_CAR
 from selfdrive.car import STD_CARGO_KG, scale_rot_inertia, scale_tire_stiffness, is_ecu_disconnected, gen_empty_fingerprint
 from selfdrive.swaglog import cloudlog
+import selfdrive.messaging as messaging
+from selfdrive.services import service_list
 from selfdrive.car.interfaces import CarInterfaceBase
 
 ButtonType = car.CarState.ButtonEvent.Type
@@ -17,10 +19,19 @@ class CarInterface(CarInterfaceBase):
     self.CP = CP
     self.VM = VehicleModel(CP)
 
+    if self.CP.carFingerprint in NO_EPS_CAR:
+      self.sensor = messaging.sub_sock(service_list['sensorEvents'].port)
+      self.yaw_rate_meas = 0.
+
+    if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
+      self.gps = messaging.sub_sock(service_list['gpsLocation'].port)
+
+
     self.frame = 0
     self.gas_pressed_prev = False
     self.brake_pressed_prev = False
     self.cruise_enabled_prev = False
+
 
     # *** init the major players ***
     self.CS = CarState(CP)
@@ -55,7 +66,7 @@ class CarInterface(CarInterfaceBase):
 
     ret.steerActuatorDelay = 0.12  # Default delay, Prius has larger delay
 
-    if candidate not in [CAR.PRIUS, CAR.RAV4, CAR.RAV4H,CAR.OLD_CAR]: # These cars use LQR/INDI
+    if candidate not in [CAR.PRIUS, CAR.RAV4, CAR.RAV4H, CAR.OLD_CAR]: # These cars use LQR/INDI
       ret.lateralTuning.init('pid')
       ret.lateralTuning.pid.kiBP, ret.lateralTuning.pid.kpBP = [[0.], [0.]]
 
@@ -249,7 +260,7 @@ class CarInterface(CarInterfaceBase):
 
     ret.steerRateCost = 1.
     if candidate == CAR.OLD_CAR:
-      ret.centerToFront = ret.wheelbase * 0.5
+      ret.centerToFront = ret.wheelbase * 0.4 # iveco daily 4800 tot, 1900 front
     else:
       ret.centerToFront = ret.wheelbase * 0.44
 
@@ -332,6 +343,8 @@ class CarInterface(CarInterfaceBase):
     ret.wheelSpeeds.rl = self.CS.v_wheel_rl
     ret.wheelSpeeds.rr = self.CS.v_wheel_rr
 
+
+
     # gear shifter
     ret.gearShifter = self.CS.gear_shifter
 
@@ -361,6 +374,48 @@ class CarInterface(CarInterfaceBase):
     ret.cruiseState.speed = self.CS.v_cruise_pcm * CV.KPH_TO_MS
     ret.cruiseState.available = bool(self.CS.main_on)
     ret.cruiseState.speedOffset = 0.
+
+
+
+    ####  our special cases for cars without EPS and / or even without SPEEDOMETER
+    if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
+      gps = messaging.recv_sock(self.gps)
+      if gps is not None:
+        self.prev_speed = self.speed
+        self.speed = gps.gpsLocation.speed
+
+      # speeds
+      ret.vEgo = self.speed
+      ret.vEgoRaw = self.speed
+
+      ret.standstill = self.speed < 0.01
+      ret.wheelSpeeds.fl = self.speed
+      ret.wheelSpeeds.fr = self.speed
+      ret.wheelSpeeds.rl = self.speed
+      ret.wheelSpeeds.rr = self.speed
+
+      a = self.speed - self.prev_speed
+
+      ret.aEgo = a
+      ret.brakePressed = a < -0.5
+
+    if self.CP.carFingerprint in NO_EPS_CAR:
+      # get basic data from phone and gps since CAN isn't connected
+      sensors = messaging.recv_sock(self.sensor)
+      if sensors is not None:
+        for sensor in sensors.sensorEvents:
+          if sensor.type == 4:  # gyro
+            self.yaw_rate_meas = -sensor.gyro.v[0]
+      TS = 0.01  # 100Hz
+      YAW_FR = 0.2  # ~0.8s time constant on yaw rate filter
+      # low pass gain
+      LPG = 2 * 3.1415 * YAW_FR * TS / (1 + 2 * 3.1415 * YAW_FR * TS)
+      self.yawRate = LPG * self.yaw_rate_meas + (1. - LPG) * self.yaw_rate
+      ret.yawRate = self.yaw_rate
+
+      curvature = self.yaw_rate / max(self.speed, 1.)
+      ret.steeringAngle = curvature * self.CP.steerRatio * self.CP.wheelbase * CV.RAD_TO_DEG
+
 
     if self.CP.carFingerprint in NO_STOP_TIMER_CAR or self.CP.enableGasInterceptor:
       # ignore standstill in hybrid vehicles, since pcm allows to restart without
