@@ -4,7 +4,7 @@ from selfdrive.config import Conversions as CV
 from selfdrive.controls.lib.drive_helpers import EventTypes as ET, create_event
 from selfdrive.controls.lib.vehicle_model import VehicleModel
 from selfdrive.car.toyota.carstate import CarState, get_can_parser, get_cam_can_parser
-from selfdrive.car.toyota.values import ECU, ECU_FINGERPRINT, CAR, NO_STOP_TIMER_CAR, TSS2_CAR, FINGERPRINTS, NO_EPS_CAR, NO_SPEEDOMETER_CAR
+from selfdrive.car.toyota.values import ECU, ECU_FINGERPRINT, CAR, NO_STOP_TIMER_CAR, TSS2_CAR, FINGERPRINTS, NO_EPS_CAR
 from selfdrive.car import STD_CARGO_KG, scale_rot_inertia, scale_tire_stiffness, is_ecu_disconnected, gen_empty_fingerprint
 from selfdrive.swaglog import cloudlog
 import selfdrive.messaging as messaging
@@ -23,11 +23,6 @@ class CarInterface(CarInterfaceBase):
       self.sensor = messaging.sub_sock(service_list['sensorEvents'].port)
       self.yaw_rate_meas = 0.
       self.yaw_rate = 0.
-
-    if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
-      self.gps = messaging.sub_sock(service_list['gpsLocation'].port)
-      self.speed = 0.
-      self.prev_speed = 0.
 
 
     self.frame = 0
@@ -380,28 +375,7 @@ class CarInterface(CarInterfaceBase):
 
 
 
-    ####  our special cases for cars without EPS and / or even without SPEEDOMETER
-    if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
-      gps = messaging.recv_sock(self.gps)
-      if gps is not None:
-        self.prev_speed = self.speed
-        self.speed = gps.gpsLocation.speed
-
-      # speeds
-      ret.vEgo = self.speed
-      ret.vEgoRaw = self.speed
-
-      ret.standstill = self.speed < 0.01
-      ret.wheelSpeeds.fl = self.speed
-      ret.wheelSpeeds.fr = self.speed
-      ret.wheelSpeeds.rl = self.speed
-      ret.wheelSpeeds.rr = self.speed
-
-      a = self.speed - self.prev_speed
-
-      ret.aEgo = a
-      ret.brakePressed = a < -0.5
-
+    ####  our special cases for cars without EPS
     if self.CP.carFingerprint in NO_EPS_CAR:
       # get basic data from phone and gps since CAN isn't connected
       sensors = messaging.recv_sock(self.sensor)

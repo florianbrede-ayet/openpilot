@@ -4,7 +4,9 @@ from common.kalman.simple_kalman import KF1D
 from selfdrive.can.can_define import CANDefine
 from selfdrive.can.parser import CANParser
 from selfdrive.config import Conversions as CV
-from selfdrive.car.toyota.values import CAR, DBC, STEER_THRESHOLD, TSS2_CAR, NO_DSU_CAR, NO_EPS_CAR
+from selfdrive.car.toyota.values import CAR, DBC, STEER_THRESHOLD, TSS2_CAR, NO_DSU_CAR, NO_EPS_CAR, NO_SPEEDOMETER_CAR
+import selfdrive.messaging as messaging
+from selfdrive.services import service_list
 
 GearShifter = car.CarState.GearShifter
 
@@ -118,6 +120,9 @@ class CarState():
     self.angle_offset = 0.
     self.init_angle_offset = False
 
+    if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
+      self.gps = messaging.sub_sock(service_list['gpsLocation'].port)
+
     # initialize can parser
     self.car_fingerprint = CP.carFingerprint
 
@@ -153,6 +158,16 @@ class CarState():
     self.v_wheel_fr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_FR'] * CV.KPH_TO_MS
     self.v_wheel_rl = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RL'] * CV.KPH_TO_MS
     self.v_wheel_rr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RR'] * CV.KPH_TO_MS
+
+    ####  our special cases for cars without SPEEDOMETER
+    if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
+      gps = messaging.recv_sock(self.gps)
+      if gps is not None:
+        self.v_wheel_fl = gps.gpsLocation.speed
+        self.v_wheel_fr = gps.gpsLocation.speed
+        self.v_wheel_rl = gps.gpsLocation.speed
+        self.v_wheel_rr = gps.gpsLocation.speed
+
     v_wheel = mean([self.v_wheel_fl, self.v_wheel_fr, self.v_wheel_rl, self.v_wheel_rr])
 
     # Kalman filter
