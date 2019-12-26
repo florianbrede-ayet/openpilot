@@ -154,11 +154,10 @@ class CarState():
     self.esp_disabled = cp.vl["ESP_CONTROL"]['TC_DISABLED']
 
     # calc best v_ego estimate, by averaging two opposite corners
-    if self.CP.carFingerprint not in NO_SPEEDOMETER_CAR:
-      self.v_wheel_fl = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_FL'] * CV.KPH_TO_MS
-      self.v_wheel_fr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_FR'] * CV.KPH_TO_MS
-      self.v_wheel_rl = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RL'] * CV.KPH_TO_MS
-      self.v_wheel_rr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RR'] * CV.KPH_TO_MS
+    self.v_wheel_fl = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_FL'] * CV.KPH_TO_MS
+    self.v_wheel_fr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_FR'] * CV.KPH_TO_MS
+    self.v_wheel_rl = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RL'] * CV.KPH_TO_MS
+    self.v_wheel_rr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RR'] * CV.KPH_TO_MS
 
     ####  our special cases for cars without SPEEDOMETER
     if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
@@ -168,6 +167,12 @@ class CarState():
         self.v_wheel_fr = gps.gpsLocation.speed
         self.v_wheel_rl = gps.gpsLocation.speed
         self.v_wheel_rr = gps.gpsLocation.speed
+      else:
+        self.v_wheel_fl = 0
+        self.v_wheel_fr = 0
+        self.v_wheel_rl = 0
+        self.v_wheel_rr = 0
+
 
     v_wheel = mean([self.v_wheel_fl, self.v_wheel_fr, self.v_wheel_rl, self.v_wheel_rr])
 
