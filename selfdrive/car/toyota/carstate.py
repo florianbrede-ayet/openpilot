@@ -4,8 +4,9 @@ from opendbc.can.can_define import CANDefine
 from selfdrive.car.interfaces import CarStateBase
 from opendbc.can.parser import CANParser
 from selfdrive.config import Conversions as CV
-from selfdrive.car.toyota.values import CAR, DBC, STEER_THRESHOLD, TSS2_CAR, NO_STOP_TIMER_CAR, NO_EPS_CAR
-
+from selfdrive.car.toyota.values import CAR, DBC, STEER_THRESHOLD, TSS2_CAR, NO_STOP_TIMER_CAR, NO_EPS_CAR, NO_SPEEDOMETER_CAR
+import selfdrive.messaging as messaging
+from selfdrive.services import service_list
 
 class CarState(CarStateBase):
   def __init__(self, CP):
@@ -21,6 +22,19 @@ class CarState(CarStateBase):
     # Need to apply an offset as soon as the steering angle measurements are both received
     self.needs_angle_offset = CP.carFingerprint not in TSS2_CAR
     self.angle_offset = 0.
+
+    if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
+      self.gps = messaging.sub_sock(service_list['gpsLocation'].port)
+
+    if self.CP.carFingerprint in NO_EPS_CAR:
+      self.sensor = messaging.sub_sock(service_list['sensorEvents'].port)
+      self.yaw_rate_meas = 0.
+      self.yaw_rate = 0.
+
+    self.last_wheelSpeeds_fl = 0
+    self.last_wheelSpeeds_fr = 0
+    self.last_wheelSpeeds_rl = 0
+    self.last_wheelSpeeds_rr = 0
 
   def update(self, cp, cp_cam):
     ret = car.CarState.new_message()
@@ -38,12 +52,44 @@ class CarState(CarStateBase):
       ret.gas = cp.vl["GAS_PEDAL"]['GAS_PEDAL']
       ret.gasPressed = ret.gas > 1e-5
 
-    ret.wheelSpeeds.fl = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_FL'] * CV.KPH_TO_MS
-    ret.wheelSpeeds.fr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_FR'] * CV.KPH_TO_MS
-    ret.wheelSpeeds.rl = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RL'] * CV.KPH_TO_MS
-    ret.wheelSpeeds.rr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RR'] * CV.KPH_TO_MS
+    if self.CP.carFingerprint not in NO_SPEEDOMETER_CAR:
+      self.last_wheelSpeeds_fl = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_FL'] * CV.KPH_TO_MS
+      self.last_wheelSpeeds_fr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_FR'] * CV.KPH_TO_MS
+      self.last_wheelSpeeds_rl = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RL'] * CV.KPH_TO_MS
+      self.last_wheelSpeeds_rr = cp.vl["WHEEL_SPEEDS"]['WHEEL_SPEED_RR'] * CV.KPH_TO_MS
+    
+
+    ####  our special cases for cars without EPS and / or even without SPEEDOMETER
+    if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
+      gps = messaging.recv_sock(self.gps)
+      if gps is not None:
+        self.last_wheelSpeeds_fl = gps.gpsLocation.speed
+        self.last_wheelSpeeds_fr = gps.gpsLocation.speed
+        self.last_wheelSpeeds_rl = gps.gpsLocation.speed
+        self.last_wheelSpeeds_rr = gps.gpsLocation.speed
+
+    ret.wheelSpeeds.fl = self.last_wheelSpeeds_fl
+    ret.wheelSpeeds.fr = self.last_wheelSpeeds_fr
+    ret.wheelSpeeds.rl = self.last_wheelSpeeds_rl
+    ret.wheelSpeeds.rr = self.last_wheelSpeeds_rr
+
     ret.vEgoRaw = mean([ret.wheelSpeeds.fl, ret.wheelSpeeds.fr, ret.wheelSpeeds.rl, ret.wheelSpeeds.rr])
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
+
+    if self.CP.carFingerprint in NO_EPS_CAR:
+      # get basic data from phone and gps since CAN isn't connected
+      sensors = messaging.recv_sock(self.sensor)
+      if sensors is not None:
+        for sensor in sensors.sensorEvents:
+          if sensor.type == 4:  # gyro
+            self.yaw_rate_meas = -sensor.gyro.v[0]
+      TS = 0.01  # 100Hz
+      YAW_FR = 0.2  # ~0.8s time constant on yaw rate filter
+      # low pass gain
+      LPG = 2 * 3.1415 * YAW_FR * TS / (1 + 2 * 3.1415 * YAW_FR * TS)
+      self.yaw_rate = LPG * self.yaw_rate_meas + (1. - LPG) * self.yaw_rate
+      curvature = self.yaw_rate / max(ret.vEgo, 1.)
+      ret.steeringAngle = curvature * self.CP.steerRatio * self.CP.wheelbase * CV.RAD_TO_DEG
 
     ret.standstill = ret.vEgoRaw < 0.001
 
@@ -51,7 +97,7 @@ class CarState(CarStateBase):
     if abs(cp.vl["STEER_TORQUE_SENSOR"]['STEER_ANGLE']) > 1e-3:
       self.accurate_steer_angle_seen = True
 
-    if self.accurate_steer_angle_seen:
+    if self.CP.carFingerprint not in NO_SPEEDOMETER_CAR and self.accurate_steer_angle_seen:
       ret.steeringAngle = cp.vl["STEER_TORQUE_SENSOR"]['STEER_ANGLE'] - self.angle_offset
 
       if self.needs_angle_offset:
