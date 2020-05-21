@@ -3,7 +3,7 @@ from common.numpy_fast import clip
 from selfdrive.car import apply_toyota_steer_torque_limits, create_gas_command, make_can_msg
 from selfdrive.car.toyota.toyotacan import create_steer_command, create_ui_command, \
                                            create_accel_command, create_acc_cancel_command, create_fcw_command, create_lead_command
-from selfdrive.car.toyota.values import Ecu, CAR, STATIC_MSGS, SteerLimitParams
+from selfdrive.car.toyota.values import Ecu, CAR, STATIC_MSGS, SteerLimitParams, NO_DSU_CAR, NO_EPS_CAR
 from opendbc.can.packer import CANPacker
 from common.travis_checker import travis
 import cereal.messaging as messaging
@@ -96,11 +96,11 @@ class CarController():
     self.steer_rate_limited = new_steer != apply_steer
 
     # only cut torque when steer state is a known fault
-    if CS.steer_state in [9, 25]:
+    if self.CS.carFingerprint not in NO_EPS_CAR and CS.steer_state in [9, 25]:
       self.last_fault_frame = frame
 
     # Cut steering for 2s after fault
-    if not enabled or (frame - self.last_fault_frame < 200):
+    if not enabled or self.CS.carFingerprint in NO_EPS_CAR or (frame - self.last_fault_frame < 200):
       apply_steer = 0
       apply_steer_req = 0
     else:

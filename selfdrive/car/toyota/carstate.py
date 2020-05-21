@@ -4,7 +4,7 @@ from opendbc.can.can_define import CANDefine
 from selfdrive.car.interfaces import CarStateBase
 from opendbc.can.parser import CANParser
 from selfdrive.config import Conversions as CV
-from selfdrive.car.toyota.values import CAR, DBC, STEER_THRESHOLD, TSS2_CAR, NO_STOP_TIMER_CAR
+from selfdrive.car.toyota.values import CAR, DBC, STEER_THRESHOLD, TSS2_CAR, NO_STOP_TIMER_CAR, NO_EPS_CAR
 
 
 class CarState(CarStateBase):
@@ -100,8 +100,11 @@ class CarState(CarStateBase):
 
     ret.espDisabled = cp.vl["ESP_CONTROL"]['TC_DISABLED'] != 0
     # 2 is standby, 10 is active. TODO: check that everything else is really a faulty state
-    self.steer_state = cp.vl["EPS_STATUS"]['LKA_STATE']
-    self.steer_warning = cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 5]
+    if self.CP.carFingerprint not in NO_EPS_CAR:
+      self.steer_state = 2
+    else:
+      self.steer_state = cp.vl["EPS_STATUS"]['LKA_STATE']
+    self.steer_warning = self.CP.carFingerprint not in NO_EPS_CAR and cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 5]
 
     return ret
 
@@ -137,15 +140,23 @@ class CarState(CarStateBase):
       ("AUTO_HIGH_BEAM", "LIGHT_STALK", 0),
     ]
 
-    checks = [
-      ("BRAKE_MODULE", 40),
-      ("GAS_PEDAL", 33),
-      ("WHEEL_SPEEDS", 80),
-      ("STEER_ANGLE_SENSOR", 80),
-      ("PCM_CRUISE", 33),
-      ("STEER_TORQUE_SENSOR", 50),
-      ("EPS_STATUS", 25),
-    ]
+    if CP.carFingerprint not in NO_EPS_CAR:
+      checks = [
+        ("BRAKE_MODULE", 40),
+        ("GAS_PEDAL", 33),
+        ("WHEEL_SPEEDS", 80),
+        ("STEER_ANGLE_SENSOR", 80),
+        ("PCM_CRUISE", 33),
+        ("STEER_TORQUE_SENSOR", 50),
+        ("EPS_STATUS", 25),
+      ]
+    else:
+      checks = [
+        ("BRAKE_MODULE", 40),
+        ("GAS_PEDAL", 33),
+        ("WHEEL_SPEEDS", 80),
+        ("PCM_CRUISE", 33)
+      ]
 
     if CP.carFingerprint == CAR.LEXUS_IS:
       signals.append(("MAIN_ON", "DSU_CRUISE", 0))
@@ -175,6 +186,9 @@ class CarState(CarStateBase):
     signals = [("FORCE", "PRE_COLLISION", 0), ("PRECOLLISION_ACTIVE", "PRE_COLLISION", 0)]
 
     # use steering message to check if panda is connected to frc
-    checks = [("STEERING_LKA", 42)]
+    if CP.carFingerprint not in NO_EPS_CAR:
+      checks = [("STEERING_LKA", 42)]
+    else:
+      checks = []
 
     return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 2)
