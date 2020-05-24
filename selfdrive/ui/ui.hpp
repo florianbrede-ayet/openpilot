@@ -57,7 +57,8 @@ const int vwp_h = 1080;
 const int nav_w = 640;
 const int nav_ww= 760;
 const int sbr_w = 300;
-const int bdr_s = 30;
+const int bdr_s = 0; 
+const int bdr_is = 30;
 const int box_x = sbr_w+bdr_s;
 const int box_y = bdr_s;
 const int box_w = vwp_w-sbr_w-(bdr_s*2);
@@ -86,8 +87,8 @@ const int SET_SPEED_NA = 255;
 const uint8_t bg_colors[][4] = {
   [STATUS_STOPPED] = {0x07, 0x23, 0x39, 0xff},
   [STATUS_DISENGAGED] = {0x17, 0x33, 0x49, 0xff},
-  [STATUS_ENGAGED] = {0x17, 0x86, 0x44, 0xff},
-  [STATUS_WARNING] = {0xDA, 0x6F, 0x25, 0xff},
+  [STATUS_ENGAGED] = {0x17, 0x86, 0x44, 0x0f},
+  [STATUS_WARNING] = {0xDA, 0x6F, 0x25, 0x0f},
   [STATUS_ALERT] = {0xC9, 0x22, 0x31, 0xff},
 };
 
@@ -112,8 +113,13 @@ typedef struct UIScene {
   bool decel_for_model;
 
   float speedlimit;
+  float angleSteers;
+  float speedlimitaheaddistance;
+  bool speedlimitahead_valid;
   bool speedlimit_valid;
   bool map_valid;
+  bool brakeLights;
+
 
   float curvature;
   int engaged;
@@ -135,6 +141,8 @@ typedef struct UIScene {
 
   int front_box_x, front_box_y, front_box_width, front_box_height;
 
+  bool recording;
+
   uint64_t alert_ts;
   char alert_text1[1024];
   char alert_text2[1024];
@@ -143,16 +151,34 @@ typedef struct UIScene {
 
   float awareness_status;
 
-  int dfButtonStatus;
-
   // Used to show gps planner status
   bool gps_planner_active;
 
+  // dev ui
+  float angleSteersDes;
+  float pa0;
+  float freeSpace;
+  bool steerOverride;
+  float output_scale;
+  
+  int odometer;
+  int engineRPM;
+  float tripDistance;
+  
+  int cpu0;
+  float gpsAccuracyPhone;
+  float altitudePhone;
+  float speedPhone;
+  float bearingPhone;
+
+  float gpsAccuracyUblox;
+  float altitudeUblox;
+  float speedUblox;
+  float bearingUblox;
   uint8_t networkType;
   uint8_t networkStrength;
   int batteryPercent;
   char batteryStatus[64];
-  float freeSpace;
   uint8_t thermalStatus;
   int paTemp;
   int hwType;
@@ -194,6 +220,7 @@ typedef struct UIState {
   int img_turn;
   int img_face;
   int img_map;
+  int img_brake;
   int img_button_settings;
   int img_button_home;
   int img_battery;
@@ -208,10 +235,12 @@ typedef struct UIState {
   SubSocket *radarstate_sock;
   SubSocket *map_data_sock;
   SubSocket *uilayout_sock;
+  SubSocket *carstate_sock;
+  SubSocket *gpslocationexternal_sock;
+  SubSocket *livempc_sock;  
   SubSocket *thermal_sock;
   SubSocket *health_sock;
   SubSocket *ubloxgnss_sock;
-  PubSocket *dynamicfollowbutton_sock;
   Poller * poller;
   Poller * ublox_poller;
 

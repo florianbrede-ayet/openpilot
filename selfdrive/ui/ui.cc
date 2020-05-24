@@ -6,9 +6,6 @@
 #include <sys/mman.h>
 #include <sys/resource.h>
 
-#include <capnp/serialize.h>
-#include "cereal/gen/cpp/log.capnp.h"
-
 #include <czmq.h>
 
 #include "common/util.h"
@@ -20,6 +17,7 @@
 
 #include "ui.hpp"
 #include "sound.hpp"
+#include "dashcam.h"
 
 static int last_brightness = -1;
 static void set_brightness(UIState *s, int brightness) {
@@ -74,34 +72,6 @@ static void navigate_to_home(UIState *s) {
 #else
   // computer UI doesn't have offroad home
 #endif
-}
-
-static void send_df(UIState *s, int status) {
-  capnp::MallocMessageBuilder msg;
-  cereal::Event::Builder event = msg.initRoot<cereal::Event>();
-  auto dfStatus = event.initDynamicFollowButton();
-  dfStatus.setStatus(status);
-
-  auto words = capnp::messageToFlatArray(msg);
-  auto bytes = words.asBytes();
-  s->dynamicfollowbutton_sock->send((char*)bytes.begin(), bytes.size());
-}
-
-static bool handle_df_touch(UIState *s, int touch_x, int touch_y) {
-  //dfButton manager  // code below thanks to kumar: https://github.com/arne182/openpilot/commit/71d5aac9f8a3f5942e89634b20cbabf3e19e3e78
-  if (s->awake && s->vision_connected && s->active_app == cereal_UiLayoutState_App_home && s->status != STATUS_STOPPED) {
-  int padding = 40;
-    if ((1660 - padding <= touch_x) && (855 - padding <= touch_y)) {
-      s->scene.uilayout_sidebarcollapsed = true;  // collapse sidebar when tapping df button
-      s->scene.dfButtonStatus++;
-      if (s->scene.dfButtonStatus > 3) {
-        s->scene.dfButtonStatus = 0;
-      }
-      send_df(s, s->scene.dfButtonStatus);
-      return true;
-    }
-  }
-  return false;
 }
 
 static void handle_sidebar_touch(UIState *s, int touch_x, int touch_y) {
@@ -180,20 +150,23 @@ static void ui_init(UIState *s) {
   s->uilayout_sock = SubSocket::create(s->ctx, "uiLayoutState");
   s->livecalibration_sock = SubSocket::create(s->ctx, "liveCalibration");
   s->radarstate_sock = SubSocket::create(s->ctx, "radarState");
+  s->carstate_sock = SubSocket::create(s->ctx, "carState");
+  s->gpslocationexternal_sock = SubSocket::create(s->ctx, "gpsLocationExternal");
+  s->livempc_sock= SubSocket::create(s->ctx, "liveMpc");
   s->thermal_sock = SubSocket::create(s->ctx, "thermal");
   s->health_sock = SubSocket::create(s->ctx, "health");
   s->ubloxgnss_sock = SubSocket::create(s->ctx, "ubloxGnss");
-  s->dynamicfollowbutton_sock = PubSocket::create(s->ctx, "dynamicFollowButton");
 
   assert(s->model_sock != NULL);
   assert(s->controlsstate_sock != NULL);
   assert(s->uilayout_sock != NULL);
   assert(s->livecalibration_sock != NULL);
   assert(s->radarstate_sock != NULL);
+  assert(s->carstate_sock != NULL);
+  assert(s->livempc_sock != NULL);
   assert(s->thermal_sock != NULL);
   assert(s->health_sock != NULL);
   assert(s->ubloxgnss_sock != NULL);
-  assert(s->dynamicfollowbutton_sock != NULL);
 
   s->poller = Poller::create({
                               s->model_sock,
@@ -201,10 +174,14 @@ static void ui_init(UIState *s) {
                               s->uilayout_sock,
                               s->livecalibration_sock,
                               s->radarstate_sock,
+	                            s->carstate_sock,
+                              s->gpslocationexternal_sock,
+                              s->livempc_sock,
                               s->thermal_sock,
                               s->health_sock,
                               s->ubloxgnss_sock
                              });
+
 
 #ifdef SHOW_SPEEDLIMIT
   s->map_data_sock = SubSocket::create(s->ctx, "liveMapData");
@@ -252,7 +229,6 @@ static void ui_init_vision(UIState *s, const VisionStreamBufs back_bufs,
       .front_box_height = ui_info.front_box_height,
       .world_objects_visible = false,  // Invisible until we receive a calibration message.
       .gps_planner_active = false,
-      .dfButtonStatus = 0,
   };
 
   s->rgb_width = back_bufs.width;
@@ -347,6 +323,9 @@ void handle_message(UIState *s, Message * msg) {
     struct cereal_ControlsState datad;
     cereal_read_ControlsState(&datad, eventd.controlsState);
 
+    struct cereal_ControlsState_LateralPIDState pdata;
+    cereal_read_ControlsState_LateralPIDState(&pdata, datad.lateralControlState.pidState);
+
     s->controls_timeout = 1 * UI_FREQ;
     s->controls_seen = true;
 
@@ -355,6 +334,9 @@ void handle_message(UIState *s, Message * msg) {
     }
     s->scene.v_cruise = datad.vCruise;
     s->scene.v_ego = datad.vEgo;
+    s->scene.angleSteers = datad.angleSteers;
+    s->scene.steerOverride= datad.steerOverride;
+    s->scene.output_scale = pdata.output;
     s->scene.curvature = datad.curvature;
     s->scene.engaged = datad.enabled;
     s->scene.engageable = datad.engageable;
@@ -364,6 +346,9 @@ void handle_message(UIState *s, Message * msg) {
     s->scene.frontview = datad.rearViewCam;
 
     s->scene.decel_for_model = datad.decelForModel;
+
+    // getting steering related data for dev ui
+    s->scene.angleSteersDes = datad.angleSteersDes;
 
     if (datad.alertSound != cereal_CarControl_HUDControl_AudibleAlert_none && datad.alertSound != s->alert_sound) {
       if (s->alert_sound != cereal_CarControl_HUDControl_AudibleAlert_none) {
@@ -490,6 +475,10 @@ void handle_message(UIState *s, Message * msg) {
     struct cereal_LiveMapData datad;
     cereal_read_LiveMapData(&datad, eventd.liveMapData);
     s->scene.map_valid = datad.mapValid;
+  } else if (eventd.which == cereal_Event_carState) {
+    struct cereal_CarState datad;
+    cereal_read_CarState(&datad, eventd.carState);
+    s->scene.brakeLights = datad.brakeLights;
   } else if (eventd.which == cereal_Event_thermal) {
     struct cereal_ThermalData datad;
     cereal_read_ThermalData(&datad, eventd.thermal);
@@ -956,9 +945,7 @@ int main(int argc, char* argv[]) {
     if (touched == 1) {
       set_awake(s, true);
       handle_sidebar_touch(s, touch_x, touch_y);
-      if (!handle_df_touch(s, touch_x, touch_y)){  // disables sidebar from popping out when tapping df button
-        handle_vision_touch(s, touch_x, touch_y);
-      }
+      handle_vision_touch(s, touch_x, touch_y);
     }
 
     if (!s->vision_connected) {
