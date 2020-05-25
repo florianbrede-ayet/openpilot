@@ -5,8 +5,8 @@ from selfdrive.car.interfaces import CarStateBase
 from opendbc.can.parser import CANParser
 from selfdrive.config import Conversions as CV
 from selfdrive.car.toyota.values import CAR, DBC, STEER_THRESHOLD, TSS2_CAR, NO_STOP_TIMER_CAR, NO_EPS_CAR, NO_SPEEDOMETER_CAR
-import selfdrive.messaging as messaging
-from selfdrive.services import service_list
+import cereal.messaging as messaging
+from cereal.services import service_list
 
 class CarState(CarStateBase):
   def __init__(self, CP):
@@ -24,10 +24,9 @@ class CarState(CarStateBase):
     self.angle_offset = 0.
 
     if self.CP.carFingerprint in NO_SPEEDOMETER_CAR:
-      self.gps = messaging.sub_sock(service_list['gpsLocation'].port)
-
+      self.gps = messaging.sub_sock('gpsLocation')
     if self.CP.carFingerprint in NO_EPS_CAR:
-      self.sensor = messaging.sub_sock(service_list['sensorEvents'].port)
+      self.sensor = messaging.sub_sock('sensorEvents')
       self.yaw_rate_meas = 0.
       self.yaw_rate = 0.
 
