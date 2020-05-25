@@ -36,7 +36,7 @@ class Alert():
     self.alert_size = alert_size
     self.alert_priority = alert_priority
     self.visual_alert = visual_alert
-    self.audible_alert = audible_alert
+    self.audible_alert = AudibleAlert.none
 
     self.duration_sound = duration_sound
     self.duration_hud_alert = duration_hud_alert
