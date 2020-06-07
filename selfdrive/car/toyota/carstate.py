@@ -72,10 +72,10 @@ class CarState(CarStateBase):
     ret.wheelSpeeds.rl = self.last_wheelSpeeds_rl
     ret.wheelSpeeds.rr = self.last_wheelSpeeds_rr
 
-    ret.wheelSpeeds.fl = 25.0
-    ret.wheelSpeeds.fr = 25.0
-    ret.wheelSpeeds.rl = 25.0
-    ret.wheelSpeeds.rr = 25.0
+    #ret.wheelSpeeds.fl = 25.0
+    #ret.wheelSpeeds.fr = 25.0
+    #ret.wheelSpeeds.rl = 25.0
+    #ret.wheelSpeeds.rr = 25.0
     
     ret.vEgoRaw = mean([ret.wheelSpeeds.fl, ret.wheelSpeeds.fr, ret.wheelSpeeds.rl, ret.wheelSpeeds.rr])
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
