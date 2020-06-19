@@ -107,16 +107,16 @@ class CarInterface(CarInterfaceBase):
       ret.steerRatio = 12.5
       tire_stiffness_factor = 0.444
       ret.mass = 5000.0
-      ret.longitudinalTuning.kpBP = [0., 5., 15.]
-      ret.longitudinalTuning.kiBP = [0., 15.]
+      ret.longitudinalTuning.kpBP = [0., 15., 25.]
+      ret.longitudinalTuning.kiBP = [0., 15., 25.]
       ret.gasMaxBP = [0., 15., 25]
-      ret.gasMaxV = [0.05, 0.3, 0.7]
+      ret.gasMaxV = [0.05, 0.2, 0.4]
       ret.enableGasInterceptor = True #OLD_CAR USES ALWAYS INTERCEPTOR MESSAGE FOR GAS
       
       if ret.enableGasInterceptor:
-        ret.longitudinalTuning.kpV = [1.2, 0.9, 0.65]
-        ret.longitudinalTuning.kiV = [0.15, 0.1]
-        
+        ret.longitudinalTuning.kpV = [0.5, 0.5, 0.45]
+        ret.longitudinalTuning.kiV = [0.1, 0.05, 0.04]
+
       ret.lateralTuning.init('lqr')
       ret.lateralTuning.lqr.scale = 1500.0
       ret.lateralTuning.lqr.ki = 0.07
