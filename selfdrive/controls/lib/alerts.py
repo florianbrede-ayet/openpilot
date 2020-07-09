@@ -74,6 +74,13 @@ ALERTS = [
       Priority.MID, VisualAlert.none, AudibleAlert.chimeDisengage, .2, 0., 0.),
 
   Alert(
+      "brakeAssist",
+      "BRAKE!",
+      "Brake Assist Required",
+      AlertStatus.critical, AlertSize.full,
+      Priority.MID, VisualAlert.fcw, AudibleAlert.chimeError, 0.4, 2., 2.),
+
+  Alert(
       "fcw",
       "BRAKE!",
       "Risk of Collision",
