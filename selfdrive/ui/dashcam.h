@@ -322,12 +322,12 @@ void screen_toggle_lock() {
 void dashcam( UIState *s, int touch_x, int touch_y ) {
   screen_draw_button(s, touch_x, touch_y);
   if (screen_button_clicked(touch_x,touch_y)) {
-    click_elapsed_time = get_time() - click_time;
-
+    screen_toggle_record_state();
+    /*click_elapsed_time = get_time() - click_time;
     if (click_elapsed_time > 0) {
       click_time = get_time() + 1;
       screen_toggle_record_state();
-    }
+    }*/
   }
 
   if (screen_lock_button_clicked(touch_x,touch_y,lock_button)) {

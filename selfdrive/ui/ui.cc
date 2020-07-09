@@ -986,7 +986,7 @@ int main(int argc, char* argv[]) {
 
     // Don't waste resources on drawing in case screen is off
     if (s->awake) {
-      dashcam(s, touch_x, touch_y);
+      dashcam(s, touched==1 ? touch_x : -1, touched==1 ? touch_y : -1);
       ui_draw(s);
       glFinish();
       should_swap = true;
