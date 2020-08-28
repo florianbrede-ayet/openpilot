@@ -101,6 +101,7 @@ class CarState(CarStateBase):
     if abs(cp.vl["STEER_TORQUE_SENSOR"]['STEER_ANGLE']) > 1e-3:
       self.accurate_steer_angle_seen = True
 
+
     if self.CP.carFingerprint not in NO_SPEEDOMETER_CAR and self.accurate_steer_angle_seen:
       ret.steeringAngle = cp.vl["STEER_TORQUE_SENSOR"]['STEER_ANGLE'] - self.angle_offset
 
@@ -109,10 +110,8 @@ class CarState(CarStateBase):
         if abs(angle_wheel) > 1e-3 and abs(ret.steeringAngle) > 1e-3:
           self.needs_angle_offset = False
           self.angle_offset = ret.steeringAngle - angle_wheel
-          if self.CP.carFingerprint == CAR.OLD_CAR: # Steering angle sensor is mounted Upside-Dwon on OLD_CAR
-            ret.steeringAngle = -(cp.vl["STEER_ANGLE_SENSOR"]['STEER_ANGLE'] + cp.vl["STEER_ANGLE_SENSOR"]['STEER_FRACTION'])
-          else:
-            ret.steeringAngle = (cp.vl["STEER_ANGLE_SENSOR"]['STEER_ANGLE'] + cp.vl["STEER_ANGLE_SENSOR"]['STEER_FRACTION'])
+    else:
+      ret.steeringAngle = cp.vl["STEER_ANGLE_SENSOR"]['STEER_ANGLE'] + cp.vl["STEER_ANGLE_SENSOR"]['STEER_FRACTION']
 
     ret.steeringRate = cp.vl["STEER_ANGLE_SENSOR"]['STEER_RATE']
     can_gear = int(cp.vl["GEAR_PACKET"]['GEAR'])
@@ -149,11 +148,17 @@ class CarState(CarStateBase):
     ret.stockAeb = bool(cp_cam.vl["PRE_COLLISION"]["PRECOLLISION_ACTIVE"] and cp_cam.vl["PRE_COLLISION"]["FORCE"] < -1e-5)
 
     ret.espDisabled = cp.vl["ESP_CONTROL"]['TC_DISABLED'] != 0
+
+
     # 2 is standby, 10 is active. TODO: check that everything else is really a faulty state
-    if self.CP.carFingerprint not in NO_EPS_CAR:
-      self.steer_state = 2
+    if self.CP.carFingerprint in NO_EPS_CAR:
+      self.steer_state = 1
+      ret.epsDisabled = 1
     else:
       self.steer_state = cp.vl["EPS_STATUS"]['LKA_STATE']
+      ret.epsDisabled = (1 if cp.vl["EPS_STATUS"]['IPAS_STATE'] == 0 else 0)
+      self.steer_error = (cp.vl["EPS_STATUS"]['LKA_STATE'] == 99)
+
     self.steer_warning = self.CP.carFingerprint not in NO_EPS_CAR and cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 5]
 
     return ret
