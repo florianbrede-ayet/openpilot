@@ -154,10 +154,10 @@ class CarState(CarStateBase):
         # 2 is standby, 10 is active. TODO: check that everything else is really a faulty state
         if self.CP.carFingerprint in NO_EPS_CAR:
             self.steer_state = 1
-            ret.epsDisabled = 1
+            ret.epsDisabled = True
         else:
             self.steer_state = cp.vl["EPS_STATUS"]['LKA_STATE']
-            ret.epsDisabled = (1 if cp.vl["EPS_STATUS"]['IPAS_STATE'] == 0 else 0)
+            ret.epsDisabled = (True if cp.vl["EPS_STATUS"]['IPAS_STATE'] == 0 else False)
             self.steer_error = (cp.vl["EPS_STATUS"]['LKA_STATE'] == 99)
 
         self.steer_warning = self.CP.carFingerprint not in NO_EPS_CAR and cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 5]
