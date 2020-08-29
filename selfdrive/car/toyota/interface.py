@@ -363,6 +363,12 @@ class CarInterface(CarInterfaceBase):
       events.append(create_event('pcmDisable', [ET.USER_DISABLE]))
 
     # check for brake events (driver assisted braking)
+
+      if self.CC.lead_long_dist > 2 and self.CC.lead_long_dist < 100 and self.CC.lead_rel_speed <= -0.5 and ret.vEgo >= 2 and \
+              ((self.CC.lead_long_dist / abs(self.CC.lead_rel_speed) < 2.) or (
+                      self.CC.lead_long_dist / abs(self.CC.lead_rel_speed) < 4. and self.CC.lead_rel_speed < -10)):
+        print("BRAKE ASSIST   dist: %3.1f   v_rel: %2.2f   TTC: %2.2f sec" % (self.CC.lead_long_dist, self.CC.lead_rel_speed, self.CC.lead_long_dist / abs(self.CC.lead_rel_speed)))
+
     if ret.cruiseState.enabled and self.CC.lead_long_dist > 2 and self.CC.lead_long_dist < 100 and self.CC.lead_rel_speed <= -0.5 and ret.vEgo >= 2 and \
             ((self.CC.lead_long_dist/abs(self.CC.lead_rel_speed) < 2.) or (self.CC.lead_long_dist/abs(self.CC.lead_rel_speed) < 4. and self.CC.lead_rel_speed < -10)):
       events.append(create_event('steerTempUnavailable', [ET.NO_ENTRY, ET.WARNING]))
