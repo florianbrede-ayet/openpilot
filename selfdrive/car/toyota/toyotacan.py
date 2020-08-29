@@ -25,6 +25,19 @@ def create_lta_steer_command(packer, steer, steer_req, raw_cnt, angle):
   }
   return packer.make_can_msg("STEERING_LTA", 0, values)
 
+def create_ipas_steer_command(packer, angle):
+  """Creates a CAN message for the RetroPilot to send the target steering angle."""
+  values = {
+    "STATE": 1,
+    "ANGLE": round(angle*10),
+    "SET_ME_X10": 0x10,
+    "SET_ME_X00": 0x00,
+    "DIRECTION_CMD": 0,
+    "SET_ME_X40": 0x40,
+    "SET_ME_X00_1": 0x00,
+  }
+  return packer.make_can_msg("STEERING_IPAS", 0, values)
+
 
 def create_accel_command(packer, accel, pcm_cancel, standstill_req, lead):
   # TODO: find the exact canceling bit that does not create a chime
