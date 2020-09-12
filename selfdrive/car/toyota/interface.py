@@ -115,8 +115,10 @@ class CarInterface(CarInterfaceBase):
       ret.enableGasInterceptor = True #OLD_CAR USES ALWAYS INTERCEPTOR MESSAGE FOR GAS
       
       if ret.enableGasInterceptor:
-        ret.longitudinalTuning.kpV = [1.0, 1.5, 1.8]
-        ret.longitudinalTuning.kiV = [0.05, 0.08, 0.12]
+        ret.longitudinalTuning.kpV = [1.0, 1.5, 2.0]
+        ret.longitudinalTuning.kiV = [0.2, 0.4, 0.55]
+        #ret.longitudinalTuning.kiV = [0.03, 0.04, 0.5] # <-- this actually worked quite well for the last speed bracket
+
         #+        ret.longitudinalTuning.kpV = [0.6, 0.6, 0.5]
         #+        ret.longitudinalTuning.kiV = [0.05, 0.03, 0.02]
 
