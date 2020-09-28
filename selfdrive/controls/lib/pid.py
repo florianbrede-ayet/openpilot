@@ -171,11 +171,11 @@ class PIDController:
          not freeze_integrator:
         self.id = i
 
-    if self.enable_long_derivative:
-      if abs(setpoint - self.last_setpoint) / self.rate < self.max_accel_d:
-        d = self.k_d * (error - self.last_error)
-        if (self.id > 0 and self.id + d >= 0) or (self.id < 0 and self.id + d <= 0):
-          self.id += d
+    #if self.enable_long_derivative:
+    if abs(setpoint - self.last_setpoint) / self.rate < self.max_accel_d:
+      d = self.k_d * (error - self.last_error)
+      if (self.id > 0 and self.id + d >= 0) or (self.id < 0 and self.id + d <= 0):
+        self.id += d
 
     control = self.p + self.f + self.id
     if self.convert is not None:

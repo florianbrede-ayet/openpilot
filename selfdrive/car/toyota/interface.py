@@ -107,20 +107,29 @@ class CarInterface(CarInterfaceBase):
       ret.steerRatio = 12.5
       tire_stiffness_factor = 0.444
       ret.mass = 5000.0
-      ret.longitudinalTuning.kpBP = [0., 15., 25.]
-      ret.longitudinalTuning.kiBP = [0., 15., 25.]
-      ret.gasMaxBP = [0., 5., 15., 25.]
+      ret.longitudinalTuning.kpBP = [0., 15., 22.]
+      ret.longitudinalTuning.kiBP = [0., 15., 22.]
+      ret.gasMaxBP = [0., 5., 12., 25.]
       ret.gasMaxV = [0.6, 0.8, 1.0, 1.0]
       #+      ret.gasMaxV = [0.1, 0.4, 0.8]
-      ret.enableGasInterceptor = True #OLD_CAR USES ALWAYS INTERCEPTOR MESSAGE FOR GAS
-      
-      if ret.enableGasInterceptor:
-        ret.longitudinalTuning.kpV = [1.0, 1.5, 2.0]
-        ret.longitudinalTuning.kiV = [0.2, 0.4, 0.55]
-        #ret.longitudinalTuning.kiV = [0.03, 0.04, 0.5] # <-- this actually worked quite well for the last speed bracket
 
-        #+        ret.longitudinalTuning.kpV = [0.6, 0.6, 0.5]
-        #+        ret.longitudinalTuning.kiV = [0.05, 0.03, 0.02]
+      ret.longitudinalTuning.deadzoneBP = [0.]
+      ret.longitudinalTuning.deadzoneV = [0.]
+
+      ret.enableGasInterceptor = True #OLD_CAR USES ALWAYS INTERCEPTOR MESSAGE FOR GAS
+
+      # old(er)      ret.longitudinalTuning.kpBP = [0., 15., 20., 25.]
+      # old(er)      ret.longitudinalTuning.kiBP = [0., 10., 16., 25.]
+      # old(er)       ret.gasMaxBP = [0., 5., 15., 25.]
+      # old(er)       ret.gasMaxV = [0.6, 0.8, 1.0, 1.0]
+      # old        ret.longitudinalTuning.kpV = [1.0, 2.0, 2.0, 2.0]
+      # old        ret.longitudinalTuning.kiV = [0.2, 0.8, 0.8, 0.8]
+      # older       ret.longitudinalTuning.kpV = [1.0, 1.5, 1.8, 2.0]
+      # older       ret.longitudinalTuning.kiV = [0.2, 0.45, 0.55, 0.6]
+
+      if ret.enableGasInterceptor:
+        ret.longitudinalTuning.kpV = [1.2, 2, 2.4]
+        ret.longitudinalTuning.kiV = [0.2, 0.35, 0.5]
 
       ret.lateralTuning.init('pid')
       ret.lateralTuning.pid.kpBP = [0., 15 * CV.KPH_TO_MS, 50 * CV.KPH_TO_MS]
