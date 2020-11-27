@@ -100,7 +100,7 @@ class CarController():
       self.last_fault_frame = frame
 
     # Cut steering for 2s after fault
-    if not enabled or CS.CP.carFingerprint in NO_EPS_CAR or (frame - self.last_fault_frame < 200):
+    if not enabled or CS.CP.carFingerprint in NO_EPS_CAR or (frame - self.last_fault_frame < 200) or CS.out.epsDisabled==1:
       apply_steer = 0
       apply_steer_req = 0
     else:
@@ -110,6 +110,7 @@ class CarController():
       apply_steer = 0
       apply_steer_req = 0
       self.steer_rate_limited = True
+
 
     if not enabled and CS.pcm_acc_status:
       # send pcm acc cancel cmd if drive is disabled but pcm is still on, or if the system can't be activated
@@ -138,7 +139,7 @@ class CarController():
     # sending it at 100Hz seem to allow a higher rate limit, as the rate limit seems imposed
     # on consecutive messages
     if Ecu.fwdCamera in self.fake_ecus:
-      can_sends.append(create_ipas_steer_command(self.packer, actuators.steerAngle))
+      #can_sends.append(create_ipas_steer_command(self.packer, actuators.steerAngle))
       can_sends.append(create_steer_command(self.packer, apply_steer, apply_steer_req, frame))
 
     # we can spam can to cancel the system even if we are using lat only control

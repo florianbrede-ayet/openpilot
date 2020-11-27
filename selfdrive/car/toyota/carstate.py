@@ -111,8 +111,7 @@ class CarState(CarStateBase):
                     self.needs_angle_offset = False
                     self.angle_offset = ret.steeringAngle - angle_wheel
         else:
-            ret.steeringAngle = cp.vl["STEER_ANGLE_SENSOR"]['STEER_ANGLE'] + cp.vl["STEER_ANGLE_SENSOR"][
-                'STEER_FRACTION']
+            ret.steeringAngle = -(cp.vl["STEER_ANGLE_SENSOR"]['STEER_ANGLE'] + cp.vl["STEER_ANGLE_SENSOR"]['STEER_FRACTION'])
 
         ret.steeringRate = cp.vl["STEER_ANGLE_SENSOR"]['STEER_RATE']
         can_gear = int(cp.vl["GEAR_PACKET"]['GEAR'])
@@ -157,7 +156,7 @@ class CarState(CarStateBase):
             ret.epsDisabled = True
         else:
             self.steer_state = cp.vl["EPS_STATUS"]['LKA_STATE']
-            ret.epsDisabled = (True if cp.vl["EPS_STATUS"]['IPAS_STATE'] == 0 else False)
+            ret.epsDisabled = (True if ret.genericToggle==0 else False)
             self.steer_error = (cp.vl["EPS_STATUS"]['LKA_STATE'] == 99)
 
         self.steer_warning = self.CP.carFingerprint not in NO_EPS_CAR and cp.vl["EPS_STATUS"]['LKA_STATE'] not in [1, 5]

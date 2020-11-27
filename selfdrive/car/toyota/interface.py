@@ -131,22 +131,16 @@ class CarInterface(CarInterfaceBase):
         ret.longitudinalTuning.kpV = [1.2, 2, 2.4]
         ret.longitudinalTuning.kiV = [0.2, 0.35, 0.5]
 
-      ret.lateralTuning.init('pid')
-      ret.lateralTuning.pid.kpBP = [0., 15 * CV.KPH_TO_MS, 50 * CV.KPH_TO_MS]
-      ret.lateralTuning.pid.kiBP = [0., 15 * CV.KPH_TO_MS, 50 * CV.KPH_TO_MS]
-      ret.lateralTuning.pid.kpV = [0.15, 0.25, 0.60]
-      ret.lateralTuning.pid.kiV = [0.05, 0.05, 0.05]
-      ret.lateralTuning.pid.kf = 0.00005   # full torque for 10 deg at 80mph means 0.00007818594
+      ret.lateralTuning.init('lqr')
+      ret.lateralTuning.lqr.scale = 1500.0
+      ret.lateralTuning.lqr.ki = 0.07
 
-      #ret.lateralTuning.init('lqr')
-      #ret.lateralTuning.lqr.scale = 1500.0
-      #ret.lateralTuning.lqr.ki = 0.07
-      #ret.lateralTuning.lqr.a = [0., 1., -0.22619643, 1.21822268]
-      #ret.lateralTuning.lqr.b = [-1.92006585e-04, 3.95603032e-05]
-      #ret.lateralTuning.lqr.c = [1., 0.]
-      #ret.lateralTuning.lqr.k = [-110.73572306, 451.22718255]
-      #ret.lateralTuning.lqr.l = [0.3233671, 0.3185757]
-      #ret.lateralTuning.lqr.dcGain = 0.002237852961363602
+      ret.lateralTuning.lqr.a = [0., 1., -0.22619643, 1.21822268]
+      ret.lateralTuning.lqr.b = [-1.92006585e-04, 3.95603032e-05]
+      ret.lateralTuning.lqr.c = [1., 0.]
+      ret.lateralTuning.lqr.k = [-110.73572306, 451.22718255]
+      ret.lateralTuning.lqr.l = [0.3233671, 0.3185757]
+      ret.lateralTuning.lqr.dcGain = 0.002237852961363602
 
 
     elif candidate == CAR.LEXUS_RX:
